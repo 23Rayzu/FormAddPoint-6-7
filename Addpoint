@@ -1,0 +1,167 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using System.IO;
+using MapWinGIS;
+using AxMapWinGIS;
+
+namespace PGD_6_7
+{
+    public partial class Addpoint : Form
+    {
+        formMainWindow form1Object;
+
+        public Addpoint(formMainWindow form1Initialized)
+        {
+            InitializeComponent();
+            form1Object = form1Initialized;
+        }
+
+        private void Addpoint_Load(object sender, EventArgs e)
+        {
+            rdoTitik_Keyboard.Checked = true;
+            txtTitik_X.Text = "";
+            txtTitik_Y.Text = "";
+            txtAgama.Text = "";
+            txtSaranaIbadah.Text = "";
+            pictureBox1.SizeMode = PictureBoxSizeMode.StretchImage;
+            pictureBox1.Image = null;
+        }
+
+        private void rdoTitik_Keyboard_CheckedChanged(object sender, EventArgs e)
+        {
+            if (rdoTitik_Cursor.Checked == true)
+            {
+                form1Object.KryptonRibbonGroupButton_Normal.PerformClick();
+                form1Object.axMap1.MapCursor = tkCursor.crsrCross;
+                txtTitik_X.Enabled = false;
+                txtTitik_Y.Enabled = false;
+            }
+            else
+            {
+                form1Object.axMap1.MapCursor = tkCursor.crsrMapDefault;
+                form1Object.KryptonRibbonGroupButton_Normal.PerformClick();
+                txtTitik_X.Enabled = true;
+                txtTitik_Y.Enabled = true;
+            }
+        }
+
+        private void axMap1_MouseDownEvent(object sender, _DMapEvents_MouseDownEvent e)
+        {
+
+        }
+
+        private void cmdBrowse_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+            ofd.Title = "Browse Photo";
+            ofd.InitialDirectory = @"C:\";
+            ofd.Filter = "JPG (*.jpg)|*.jpg|JPEG (*.jpeg)|*.jpeg|PNG (*.png)|*.png|All files (*.*)|*.*";
+            ofd.FilterIndex = 1;
+
+            if ((ofd.ShowDialog() == DialogResult.OK))
+            {
+                string fileName = @Path.GetFileName(ofd.FileName);
+                string sourcePath = @Path.GetDirectoryName(ofd.FileName);
+                string targetPath = @Path.Combine(formMainWindow.strFilePath, @"D:\SIG MUKHLISHSemester 2\Prak PGD\acara 6 dan 7\Resources\Non-Spatial");
+                string sourceFile = @Path.Combine(targetPath, fileName);
+                string destFile = @Path.Combine(targetPath, fileName);
+                File.Copy(sourceFile, destFile, true);
+                pictureBox1.Text = fileName;
+                pictureBox1.ImageLocation = destFile;
+            }
+            else
+            {
+                MessageBox.Show("Foto Belum dipilih !!", "Report", MessageBoxButtons.OK);
+            }
+        }
+
+        private void cmdSave_Click(object sender, EventArgs e)
+        {
+            Shapefile sf = form1Object.axMap1.get_Shapefile(form1Object.handleNamaAset);
+            //bool result = sf.CreateNewWithShapeID("", ShpfileType.SHP_POINT);
+
+            var myPoint = new MapWinGIS.Point();
+            myPoint.x = Convert.ToDouble(txtTitik_X.Text);
+            myPoint.y = Convert.ToDouble(txtTitik_Y.Text);
+
+            //MessageBox.Show(sf.ShapeFileType.ToString());
+            Shape myShape = new Shape();
+            myShape.Create(ShpfileType.SHP_POINT);
+            int myPointIndex = 0;
+            myShape.InsertPoint(myPoint, ref myPointIndex);
+            int myShapeIndex = 0;
+
+            sf.StartEditingShapes();
+            if (sf.EditInsertShape(myShape, ref myShapeIndex))
+            {
+                sf.Save();
+                sf.StartEditingTable();
+                sf.EditCellValue(sf.Table.get_FieldIndexByName("Fasilitas Ibadah"),
+                    myShapeIndex, txtSaranaIbadah.Text);
+                sf.EditCellValue(sf.Table.get_FieldIndexByName("Agama"),
+                    myShapeIndex, txtAgama.Text);
+                sf.EditCellValue(sf.Table.get_FieldIndexByName("Foto"),
+                 myShapeIndex, pictureBox1.Text);
+                sf.Save();
+                sf.StartEditingTable();
+            }
+            else
+            {
+                MessageBox.Show(sf.ErrorMsg[sf.LastErrorCode].ToString());
+            }
+            sf.Save();
+            sf.StopEditingShapes();
+
+            form1Object.axMap1.RemoveLayer(form1Object.handleNamaAset);
+            form1Object.axMap1.Redraw();
+            form1Object.axMap1.Redraw2(tkRedrawType.RedrawAll);
+
+            form1Object.axMap1.Refresh();
+            form1Object.Legend1.Layers.Remove(form1Object.handleNamaAset);
+            form1Object.Legend1.RedrawLegendAndMap();
+            form1Object.Legend1.Refresh();
+            form1Object.Refresh();
+
+            form1Object.loadNamaAset();
+            form1Object.axMap1.Redraw();
+            form1Object.axMap1.Redraw2(tkRedrawType.RedrawAll);
+
+            form1Object.axMap1.Refresh();
+            form1Object.Legend1.RedrawLegendAndMap();
+            form1Object.Legend1.Refresh();
+            form1Object.Refresh();
+
+            this.Hide();
+            MessageBox.Show("Data Berhasil Disimpan");
+        }
+
+        private void cmdCancel_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+        }
+
+
+        private void Addpoint_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            e.Cancel = true;
+
+            this.Hide();
+            rdoTitik_Keyboard.Checked = true;
+            txtTitik_X.Text = "";
+            txtTitik_Y.Text = "";
+            txtSaranaIbadah.Text = "";
+            txtAgama.Text = "";
+            pictureBox1.Text = "";
+            pictureBox1.SizeMode = PictureBoxSizeMode.StretchImage;
+            pictureBox1.Image = null;
+            form1Object.axMap1.MapCursor = tkCursor.crsrMapDefault;
+            form1Object.KryptonRibbonGroupButton_Normal.PerformClick();
+        }
+    }
+}
